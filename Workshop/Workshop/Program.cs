@@ -6,11 +6,13 @@ namespace Workshop
 {
     class Program
     {
-        private const int NumberOfRepetitions = 1000;
+        private static Mutex mutexWS = new Mutex();
+        private static Mutex mutexWS_job = new Mutex();
+        private const int NumberOfRepetitions = 10000;
         static string name = "Personne n°";
         static int nbplacesoccupé = 0;
-        static DateTime debut;
-        static DateTime fin;
+        static object __lock = new object();
+        static bool __lockTaken = false;
 
         static void Main(string[] args)
         {
@@ -19,41 +21,42 @@ namespace Workshop
                 System.Console.WriteLine("Veuillez entrer un argument");
                 return;
             }
+            mutexWS.WaitOne();
             Stopwatch stopwatch = new Stopwatch();
-
+            stopwatch.Start();
             switch (args[0])
             {
                 case "1":
                     Console.WriteLine("Question 1:");
-                    stopwatch.Start();
                     for (int i = 0; i < NumberOfRepetitions; i++) { A_1(name + i); }
-                    stopwatch.Stop();
                     break;
                 case "2":
                     Console.WriteLine("Question 2:");
-                    stopwatch.Start();
                     for (int i = 0; i < NumberOfRepetitions; i++) { A_2(name + i); }
-                    stopwatch.Stop();
                     break;
                 case "3":
                     Console.WriteLine("Question 3:");
-                    stopwatch.Start();
                     for (int i = 0; i < NumberOfRepetitions; i++) { A_3(name + i); }
-                    stopwatch.Stop();
                     break;
                 case "4":
                     Console.WriteLine("Question 4:");
-                    stopwatch.Start();
                     for (int i = 0; i < NumberOfRepetitions; i++) { A_4(name + i, i); }
-                    stopwatch.Stop();
                     break;
                 case "5":
                     Console.WriteLine("Question 5:");
-                    stopwatch.Start();
                     for (int i = 0; i < NumberOfRepetitions; i++) { A_5(name + i); }
-                    stopwatch.Stop();
+                    break;
+                case "6":
+                    Console.WriteLine("Question 6:");
+                    for (int i = 0; i < NumberOfRepetitions; i++) { A_6(name + i); }
+                    break;
+                case "7":
+                    Console.WriteLine("Question 7:");
+                    for (int i = 0; i < NumberOfRepetitions; i++) { A_7(name + i); }
                     break;
             }
+            mutexWS.ReleaseMutex();
+            stopwatch.Stop();
             Console.WriteLine("Temps d'exécution: " + stopwatch.Elapsed.TotalSeconds + " secondes");
         }
 
@@ -89,12 +92,43 @@ namespace Workshop
             t.Start();
         }
 
-        static public void A_5_2(string nom) // Fonction avec protection de la variable nbplacesoccupé
+        static public void A_5_2(string nom) // Fonction avec protection de la variable nbplacesoccupé grâce à interlocked
         {
-            Interlocked.Increment(ref nbplacesoccupé);
-            Console.WriteLine($"{nom} rentre, {nbplacesoccupé} places occupées");
-            Interlocked.Decrement(ref nbplacesoccupé);
-            Console.WriteLine($"{nom} sort,   {nbplacesoccupé} places occupées");
+            Console.WriteLine($"{nom} rentre, {Interlocked.Increment(ref nbplacesoccupé)} places occupées");
+            Console.WriteLine($"{nom} sort,   {Interlocked.Decrement(ref nbplacesoccupé)} places occupées");
+        }
+
+        static public void A_6(string nom) // Fonction avec protection de la variable nbplacesoccupé grâce à lock
+        {
+            // Si le lock est déjà pris, on attend
+            Thread t = new Thread(() => A_6_2(nom));
+            while (__lockTaken) { }
+            t.Start();
+        }
+
+        static public void A_6_2(string nom) // Fonction avec protection de la variable nbplacesoccupé grâce à lock
+        {
+            lock (__lock)
+            {
+                __lockTaken = true;
+                Console.WriteLine($"{nom} rentre, {++nbplacesoccupé} places occupées");
+                Console.WriteLine($"{nom} sort,   {--nbplacesoccupé} places occupées");
+            }
+            __lockTaken = false;
+        }
+
+        static public void A_7(string nom) // Fonction avec le mutex
+        {
+            Thread t = new Thread(() => A_7_2(nom));
+            t.Start();
+        }
+
+        static public void A_7_2(string nom)
+        {
+            mutexWS_job.WaitOne();
+            Console.WriteLine($"{nom} rentre, {++nbplacesoccupé} places occupées");
+            Console.WriteLine($"{nom} sort,   {--nbplacesoccupé} places occupées");
+            mutexWS_job.ReleaseMutex();
         }
 
     }
