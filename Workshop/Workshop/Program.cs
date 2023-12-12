@@ -6,13 +6,24 @@ namespace Workshop
 {
     class Program
     {
-        private static Mutex mutexWS = new Mutex();
-        private static Mutex mutexWS_job = new Mutex();
-        private const int NumberOfRepetitions = 10000;
-        static string name = "Personne n°";
-        static int nbplacesoccupé = 0;
-        static object __lock = new object();
-        static bool __lockTaken = false;
+        private static Mutex mutexWS = new Mutex(); // Mutex pour le workshop
+        private static Mutex mutexWS_job = new Mutex(); // Mutex pour la question 7
+
+        private static Semaphore semaphoreWS = new Semaphore(1, 50); // Semaphore pour le workshop
+        private static Semaphore semaphoreWS_job = new Semaphore(1, 1); // Semaphore pour la question 8
+
+        static Barrier barrier = new Barrier(1); // Barrière pour la question 9
+
+        // ManualResetEvent Class pour la question 10
+        static ManualResetEvent manualResetEvent = new ManualResetEvent(false);
+
+        static object __lock = new object(); // Lock pour la question 6
+        static bool __lockTaken = false; // Booléen pour savoir si le lock est pris ou non
+
+        private const int NumberOfRepetitions = 5; // Nombre de répétitions pour chaque question
+        static string name = "Personne n°"; // Nom des personnes
+        static int nbplacesoccupé = 0; // Nombre de places occupées
+        static readonly int nbplacesmax = 50; // Nombre de places
 
         static void Main(string[] args)
         {
@@ -53,6 +64,18 @@ namespace Workshop
                 case "7":
                     Console.WriteLine("Question 7:");
                     for (int i = 0; i < NumberOfRepetitions; i++) { A_7(name + i); }
+                    break;
+                case "8":
+                    Console.WriteLine("Question 8:");
+                    for (int i = 0; i < NumberOfRepetitions; i++) { A_8(name + i); }
+                    break;
+                case "9":
+                    Console.WriteLine("Question 9:");
+                    for (int i = 0; i < NumberOfRepetitions; i++) { A_9(name + i); }
+                    break;
+                case "10":
+                    Console.WriteLine("Question 10:");
+                    for (int i = 0; i < NumberOfRepetitions; i++) { A_10(name + i); }
                     break;
             }
             mutexWS.ReleaseMutex();
@@ -123,12 +146,49 @@ namespace Workshop
             t.Start();
         }
 
-        static public void A_7_2(string nom)
+        static public void A_7_2(string nom) //Fonction avec le mutex
         {
             mutexWS_job.WaitOne();
             Console.WriteLine($"{nom} rentre, {++nbplacesoccupé} places occupées");
             Console.WriteLine($"{nom} sort,   {--nbplacesoccupé} places occupées");
             mutexWS_job.ReleaseMutex();
+        }
+
+        static public void A_8(string nom) // Fonction avec le semaphore
+        {
+            Thread t = new Thread(() => A_8_2(nom));
+            t.Start();
+        }
+
+        static public void A_8_2(string nom) // Fonction avec le semaphore
+        {
+            semaphoreWS_job.WaitOne();
+            Console.WriteLine($"{nom} rentre, {++nbplacesoccupé} places occupées");
+            Console.WriteLine($"{nom} sort,   {--nbplacesoccupé} places occupées");
+            semaphoreWS_job.Release();
+        }
+
+        static public void A_9(string nom) // Fonction avec la barrière
+        {
+        }
+
+        static public void A_9_2(string nom)
+        {
+        }
+
+        static public void A_10(string nom)
+        {
+            Thread t = new Thread(() => A_10_2(nom));
+            t.Start();
+            Console.WriteLine($"{nom} signale le ManualResetEvent");
+            manualResetEvent.Set();
+        }
+
+        static public void A_10_2(string nom)
+        {
+            Console.WriteLine($"{nom} attend le ManualResetEvent");
+            manualResetEvent.WaitOne();
+            Console.WriteLine($"{nom} a été libéré par le ManualResetEvent");
         }
 
     }
